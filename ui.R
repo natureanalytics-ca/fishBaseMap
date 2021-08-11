@@ -131,8 +131,7 @@ inputStyle<-tags$style(
 #Footer - for NA copyright, terms of use
 #----------------------------------------
 footer = dashboardFooter(
-  right = div(fluidRow("Copyright Nature Analytics"),
-              fluidRow(tags$a(href="https://natureanalytics.ca/terms","Terms of use", 
+  right = div(fluidRow(tags$a(href="https://natureanalytics.ca/terms","Terms of use", 
                               target="_blank")
               )
   ),

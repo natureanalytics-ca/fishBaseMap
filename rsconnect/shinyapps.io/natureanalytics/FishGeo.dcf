@@ -1,0 +1,12 @@
+name: FishGeo
+title: FishGeo
+username:
+account: natureanalytics
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4478231
+bundleId: 4909990
+url: https://natureanalytics.shinyapps.io/FishGeo/
+when: 1628653340.70425
+asMultiple: FALSE
+asStatic: FALSE

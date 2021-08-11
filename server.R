@@ -28,9 +28,9 @@ myspdf = readOGR(dsn=getwd(), layer="TM_WORLD_BORDERS_SIMPL-0.3")
 # fish_master<-fish_master %>%
 #   select("country", "Status", "Species")
 # saveRDS(fish_master, file = "fishbase_countries.rds")
-fish_master<-readRDS( file = paste0(getwd(), "/fishbase_countries.rds"))
-
-
+#fish_master<-readRDS( file = paste0(getwd(), "/fishbase_countries.rds"))
+Sys.setenv(FISHBASE_HOME=paste0(getwd(), "/www"))
+fish_master<-country()
 
 server <- function(input, output, session) {
   
@@ -160,7 +160,7 @@ server <- function(input, output, session) {
       
       if (NROW(INname) > 0) {
         
-        mxImg<-NROW(INname)
+        mxImg<-ifelse(NROW(INname) > 5, 5, NROW(INname))
         item<-carouselEdit(
           id = "fishCarousel",
           indicators = TRUE,
