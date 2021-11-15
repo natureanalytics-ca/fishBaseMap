@@ -5,8 +5,8 @@ account: natureanalytics
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 4478231
-bundleId: 5254321
+bundleId: 5254368
 url: https://natureanalytics.shinyapps.io/FishGeo/
-when: 1636993083.38731
+when: 1636993755.14203
 asMultiple: FALSE
 asStatic: FALSE
