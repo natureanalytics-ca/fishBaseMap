@@ -48,7 +48,7 @@ server <- function(input, output, session) {
   observeEvent(input$mymap_shape_click, {  
   
     waitScreen$show()
-    
+
     #------------------------------------------
     #Update map by zooming to country selected
     #-----------------------------------------
@@ -177,7 +177,6 @@ server <- function(input, output, session) {
       total<- NROW(map_species_list()%>%
                      filter(Fresh == -1))
       if("freshwater" %in% input$fishEnviro) {
-        print("yes")
         freshwater<-NROW(
           map_species_list()%>%
             filter(Fresh == -1) %>%
@@ -240,31 +239,48 @@ server <- function(input, output, session) {
   
   plot_species_list<-reactive({
     req(input$fishEnviro, map_species_list())
-    if(input$fishEnviro == "saltwater") {
-        dtIn<-map_species_list()%>%
+    
+    
+    #-----------------
+    #Saltwater
+    #-----------------
+    salt<-NULL
+    if("saltwater" %in% input$fishEnviro) {
+        salt<-map_species_list() %>%
         filter(Saltwater == -1)  %>%
         mutate(Enviro = rep("Saltwater", NROW(Saltwater))) %>%
         filter(Status %in% input$fishEndem) %>%
         filter(Family %in% input$family) %>%
-        select("Species", "FBname", "Family", "Enviro")
+        select("Species", "FBname", "Family")
     }
     
-    if(input$fishEnviro == "freshwater") {
-      dtIn<-map_species_list()%>%
+    #-----------------
+    #Freshwater
+    #-----------------
+    fresh<-NULL
+    if("freshwater" %in% input$fishEnviro) {
+      fresh<-map_species_list()%>%
         filter(Fresh == -1) %>%
         mutate(Enviro = rep("Freshwater", NROW(Fresh))) %>%
         filter(Status %in% input$fishEndem) %>%
         filter(Family %in% input$family) %>%
-        select("Species", "FBname", "Family", "Enviro")
+        select("Species", "FBname", "Family")
     }
     
-    if(input$fishEnviro == "brackish") {
-      dtIn<-map_species_list() %>%
+    #-----------------
+    #Brackish
+    #-----------------
+    brack<-NULL
+    if("brackish" %in% input$fishEnviro) {
+      brack<-map_species_list() %>%
         mutate(Enviro = rep("Brackish", NROW(Saltwater))) %>%
         filter(Status %in% input$fishEndem) %>%
         filter(Family %in% input$family) %>%
-        select("Species", "FBname", "Family", "Enviro")
+        select("Species", "FBname", "Family")
     }
+    
+    dtIn<-rbind(salt, fresh, brack)
+    dtIn<-dtIn[!duplicated(dtIn$Species),]
     dtIn
   })
   
@@ -272,17 +288,31 @@ server <- function(input, output, session) {
   #Selectable table of species
   #--------------------------------
   
-  output$species_table <- renderDT({
-    datatable(plot_species_list(),
-              colnames = c("Scientific name", "Common name", "Family", "Environment"),
-              rownames = FALSE,
-              selection = "single",
-              options = list(pageLength = 15,
-                             scrollX = TRUE,
-                             columnDefs = list(list(className = 'dt-left', targets = 0:1)))
+  output$species_table <- renderUI({
+    req(plot_species_list())
+    tagList(
+      downloadButton("downloadData", "Download species list", class="dlButton"),
+      renderDT({
+        datatable(plot_species_list(),
+                  colnames = c("Scientific name", "Common name", "Family"),
+                  rownames = FALSE,
+                  selection = "single",
+                  options = list(pageLength = 15,
+                                 scrollX = TRUE,
+                                 columnDefs = list(list(className = 'dt-left', targets = 0:1)))
+        )
+      })
+      
     )
+  
+    
   })
   species_table_Proxy<-dataTableProxy(session$ns('species_table'))
+  
+  
+  #---------------------------
+  #Image event
+  #---------------------------
   
   observeEvent(input$species_table_rows_selected,{
     
@@ -328,8 +358,8 @@ server <- function(input, output, session) {
                 ),
                 caption = div(
                             HTML(
-                              ifelse(INname$license[i]=="CC0", paste0(INname$user_id[i], ", no rights reserved (CC0)."), 
-                                     paste0("&copy ", INname$user_id[i], ", some rights reserved (", INname$license[i], ")"))
+                              ifelse(INname$license[i]=="CC0", paste0("user: ", INname$user_id[i], ", no rights reserved (CC0)."), 
+                                     paste0("&copy user: ", INname$user_id[i], ", some rights reserved (", INname$license[i], ")"))
                               
                             ),
                             br(),
@@ -364,6 +394,33 @@ server <- function(input, output, session) {
       )
     )
   })
+  
+  #------------------------
+  #Download
+  #------------------------
+  
+  output$downloadData <- downloadHandler(
+ 
+    filename = function() {
+      paste("speciesList-", Sys.Date(), ".csv", sep="")
+    },
+    content = function(file) {
+      data<-rbind(
+        c("Selected environment:", paste(input$fishEnviro, collapse=" "), ""),
+        c("Selected endemism:", paste(input$fishEndem, collapse=" "), ""),
+        c(" ", " ", " "),
+        names(plot_species_list()),
+        plot_species_list()
+      )
+      write.table(data, file, sep=",", row.names = FALSE, col.names = c(" ", " ", " "))
+    }
+  )
+  
+  
+  
+  
+  
+  
   
 }
 

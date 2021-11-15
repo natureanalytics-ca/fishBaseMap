@@ -4,11 +4,6 @@ body, label, input, button, select {
   font-family: "Arial";
 }
 
-/*DT scrollX*/
-/*.dataTables_wrapper { 
-  	overflow-x: scroll; 
-}*/
-  
 table.dataTable tr.selected td, table.dataTable td.selected {
   background-color: #FA5563!important;
 }
@@ -36,4 +31,15 @@ a {
 .leaflet-container {
    border-radius: 5px;
 }
+
+/*Style download button*/
+.dlButton {
+  background-color: #FA5563!important;
+  color: #FFFFFF!important;
+  float: right;
+  border-style: none;
+  margin-bottom: 10px;
+}
+
+
 

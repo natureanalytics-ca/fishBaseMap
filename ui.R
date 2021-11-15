@@ -42,10 +42,9 @@ controlbar<-dashboardControlbar(
    ),
    br(),
    h6("iNaturalist"),
-   p("Fish images are presented as links to the citizen scientist webpage, iNaturalist.org. Detailed information on each image can be obtained by following the links provided."),
+   p("Fish images are presented as links to the citizen scientist webpage, iNaturalist.org. Detailed information on each image can be obtained by following the links provided. Images only include those with CC license, excluding NC designation."),
    h6("References:"),
    tags$ul(
-     tags$li("Images are limited to those with CC license, excluding those with NC designation."),
      tags$li(tags$a(href="https://cran.r-project.org/web/packages/rinat/index.html", "rinat library", target="_blank"))
      
    )
@@ -101,10 +100,19 @@ body<-dashboardBody(
           solidHeader = TRUE,
           background = "primary",
           gradient = TRUE,
-          prettyRadioButtons(
+          dropdownMenu = boxDropdown(
+            icon = icon("info", "fa-1x"),
+            div(
+              style = "width: 300px; padding: 20px",
+              h6(strong("Environment")),
+              p("Filter according to whether species of interest occur in freshwater, brackish or marine environment(s) at any stage of development.")
+            )
+          ),
+          awesomeCheckboxGroup(
             inputId = "fishEnviro",
             label = "",
             choices = c("saltwater", "brackish",  "freshwater"),
+            selected = c("saltwater", "brackish",  "freshwater"),
             status = "default"
           )
         ),
@@ -117,6 +125,19 @@ body<-dashboardBody(
           solidHeader = TRUE,
           background = "primary",
           gradient = TRUE,
+          dropdownMenu = boxDropdown(
+            icon = icon("info", "fa-1x"),
+            div(
+              style = "width: 300px; padding: 20px",
+              h6(strong("Endemism")),
+              p(strong("Endemic"), "- Native and restricted to a particular area."),
+              p(strong("Native"), "- Species that occur naturally in a given area or region."),
+              p(strong("Introduced"), "- Not native to a particular country but has been brought in by man."),
+              p(strong("Reintroduced"), "- Brought into the country after initial introductions failed or after extinction of native species."),
+              p("Definitions obtained from FishBase glossary.")
+             
+            )
+          ),
           awesomeCheckboxGroup(
             inputId = "fishEndem",
             label = "",
@@ -134,19 +155,28 @@ body<-dashboardBody(
           solidHeader = TRUE,
           background = "primary",
           gradient = TRUE,
+          dropdownMenu = boxDropdown(
+            icon = icon("info", "fa-1x"),
+            div(
+              style = "width: 300px; padding: 20px",
+              h6(strong("Fish families")),
+              p("Narrow results by selecting one or more fish families.")
+            )
+          ),
           withSpinner(uiOutput("familyOut"))
         )
       ),
       br(),
       fluidRow(
         box(
-          title = "Click on any row to view images of the selected species.",
+          title = "Click any row to view available images.",
           width = 12,
           collapsible = FALSE,
           solidHeader = TRUE,
           background = "primary",
+          status = "primary",
           gradient = TRUE,
-          withSpinner(DTOutput("species_table"))
+          withSpinner(uiOutput("species_table"))
         )
         
       ),
