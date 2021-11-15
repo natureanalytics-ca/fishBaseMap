@@ -14,6 +14,7 @@ library(rinat)
 library(leaflet)
 library(leaflet.extras)
 library(spData) 
+library(sf)
 library(waiter)
 
 
