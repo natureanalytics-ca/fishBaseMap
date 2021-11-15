@@ -1,0 +1,39 @@
+
+/*Font*/
+body, label, input, button, select {
+  font-family: "Arial";
+}
+
+/*DT scrollX*/
+/*.dataTables_wrapper { 
+  	overflow-x: scroll; 
+}*/
+  
+table.dataTable tr.selected td, table.dataTable td.selected {
+  background-color: #FA5563!important;
+}
+
+/*Hyperlink color*/
+a {
+  	color: #FA5563;
+}
+   
+/*boxPad class*/
+.card-pane-right {
+  border-radius: 5px;
+  border-style: solid;
+  border-color: #c7c7c7;
+  border-width: 0px;
+}
+
+
+/*BS 4 carousel*/
+.carousel{
+  vertical-align: middle;
+  margin: auto;
+}
+
+.leaflet-container {
+   border-radius: 5px;
+}
+

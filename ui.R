@@ -1,158 +1,22 @@
 
-## Load Required Packages## 
-library(shiny)
-#library(shinydashboard)
-library(fresh)
-library(shinydashboard)
-library(shinydashboardPlus)
-library(leaflet)
-library(rgdal) # R 'Geospatial' Data Abstraction Library. 
-library(shinyWidgets)
-library(rfishbase)
-library(dplyr)
-library(DT)
-library(shinyalert)
-library(shinyjs)
-library(shinycssloaders)
-library(tidyverse)
-library(rinat)
 
-#---------------------------------------------------------------------------------
-# Setup theme (fresh library)
-#
-# Relies on library fresh. 
-# Manual setup required. 
-# Does not take bootstrap buit-in themes
-# NULL will retain default value
-#--------------------------------------------------------------------------------
-
-
-inputTheme <- create_theme(
-  
-  #Change meaning of built in colors
-  adminlte_color(
-    light_blue = "#58C7B1",
-    red = NULL,
-    green = NULL,
-    aqua = NULL,
-    yellow = NULL,
-    blue = NULL,
-    navy = NULL,
-    teal = NULL,
-    olive = NULL,
-    lime = NULL,
-    orange = NULL,
-    fuchsia = NULL,
-    purple = NULL,
-    maroon = NULL,
-    black = NULL,
-    gray_lte = NULL
-  ),
-  
-  #Sidebar
-  adminlte_sidebar(
-    width = NULL,
-    dark_bg = NULL,
-    dark_hover_bg = NULL,
-    dark_color = NULL,
-    dark_hover_color = NULL,
-    dark_submenu_bg = NULL,
-    dark_submenu_color = NULL,
-    dark_submenu_hover_color = NULL,
-    light_bg = NULL,
-    light_hover_bg = NULL,
-    light_color = NULL,
-    light_hover_color = NULL,
-    light_submenu_bg = NULL,
-    light_submenu_color = NULL,
-    light_submenu_hover_color = NULL
-  ),
-  
-  #Global options
-  adminlte_global(
-    content_bg = NULL,
-    box_bg = NULL,
-    info_box_bg = NULL
-  ),
-  
-  #not necessary to write to file
-  output_file = NULL
-)
-
-
-#-----------------------------------------
-#Other layout and styling formatting, HTML
-#-----------------------------------------
-inputStyle<-tags$style(
-  
-  #DT selected row color
-  HTML('table.dataTable tr.selected td, table.dataTable td.selected {
-    background-color: #58C7B1 !important;}'
-  ),
-  
-  #DT scrollX
-  HTML(".dataTables_wrapper { overflow-x: scroll; }" ),
-  
-  #Hyperlink color
-  HTML("a {color: black ;}"),
-  
-  #ShinyWidgets progress bar
-  HTML(".progress-bar{background-color: #58C7B1;}"),
-  
-  #Carousel
-   HTML(".carousel-control {
-    display: none;
-  }"),
-  HTML(".carousel-indicators li { 
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    margin: -20px;
-    text-indent: 0;
-    cursor: pointer;
-    border: none;
-    border-radius: 50%;
-    background-color: lightgrey;
-  }"),
-  HTML(" .carousel-indicators .active {
-    width: 18px;
-    height: 18px;
-    margin: -20px;
-    background-color: dodgerblue;
-  }"),
-  HTML(".carousel { height:400px;}"),
-
-  #shinyBS popover width
-  HTML(".popover{max-width:50%;}")
-)
-
-
-#----------------------------------------
-#Footer - for NA copyright, terms of use
-#----------------------------------------
-footer = dashboardFooter(
-  right = div(fluidRow(tags$a(href="https://natureanalytics.ca/terms","Terms of use", 
-                              target="_blank")
-              )
-  ),
-  left = tags$a(href="https://natureanalytics.ca", 
-                tags$image(src="black_logo_transparent_background.png", 
-                           height=60, 
-                           width=128
-                ),  
-                target="_blank")
-)
 
 #----------------------------
 # UI
 #----------------------------
 
 header <- dashboardHeader(
-  title = div(align="left", "Fish geo")
+  title = dashboardBrand(
+    title = "Fish Geo",
+    color = "primary",
+    href = "http://natureanalytics.ca",
+    image = "NA.png",
+  )
+  
 )
 
 sidebar <- dashboardSidebar(
-  #minified = FALSE,
+  minified =FALSE,
   sidebarMenu(
     menuItem(
       tabName = "mappingTool",
@@ -161,17 +25,55 @@ sidebar <- dashboardSidebar(
   )
 )
 
+controlbar<-dashboardControlbar(
+ title = "Notice to users",
+ width = 600,
+ div(
+   style = "padding: 20px;",
+   h6("Fishbase"),
+   p("Fish life history information, including geography, naming conventions and families are obtained from fishbase using 
+   the rfishbase library. Conventions such as naming and endemism may differ from other authorities."),
+   h6("References:"),
+   tags$ul(
+     tags$li(tags$a(href="https://www.fishbase.de", "Fishbase.org", target="_blank")),
+     tags$li(tags$a(href="https://www.fishbase.de/manual/english/fishbasethe_species_table.htm", "Fishbase country table", target="_blank")),
+     tags$li(tags$a(href="https://www.fishbase.de/manual/english/fishbasethe_species_table.htm", "Fishbase species table", target="_blank")),
+     tags$li(tags$a(href="hhttps://cran.r-project.org/web/packages/rfishbase/index.html", "rfishbase library", target="_blank"))
+   ),
+   br(),
+   h6("iNaturalist"),
+   p("Fish images are presented as links to the citizen scientist webpage, iNaturalist.org. Detailed information on each image can be obtained by following the links provided."),
+   h6("References:"),
+   tags$ul(
+     tags$li("Images are limited to those with CC license, excluding those with NC designation."),
+     tags$li(tags$a(href="https://cran.r-project.org/web/packages/rinat/index.html", "rinat library", target="_blank"))
+     
+   )
+ )
+)
+
 
 body<-dashboardBody(
   
+  
+  #---------------
+  #Call to
+  #---------------
   useShinyjs(),
-  useShinyalert(),
+  useWaiter(),
+  waiterPreloader(
+    html = tagList(
+      spin_loaders(id=19, color = "white"),
+      h5("Loading world map...")
+    ),
+    fadeout = TRUE
+  ),
   
   #----------------------
   #Read styling items
   #----------------------
   use_theme(inputTheme),
-  inputStyle,
+  includeCSS("www/main.css"),
 
   tabItems(
     
@@ -181,25 +83,80 @@ body<-dashboardBody(
     
     tabItem(
       tabName = "mappingTool",
+      leafletOutput("mymap"),
       br(),
-      h4("Select a country to generate its corresponding fish species list."),
-      withSpinner(leafletOutput("mymap")),
-      br(),
-      br(),
-      radioButtons(
-        inputId = "fishEnviro",
-        label = "Filter by environment",
-        choices = c("Saltwater", "Freshwater", "Any environment")
+      fluidRow(
+        valueBoxOutput("saltBox"),
+        valueBoxOutput("brackishBox"),
+        valueBoxOutput("freshBox")
       ),
       br(),
-      h4("Select a row from the table to view images of the selected species."),
+      fluidRow(
+        box(
+          title = "Filter by environment",
+          status = "primary",
+          width = 4,
+          height = "360px",
+          collapsible = FALSE,
+          solidHeader = TRUE,
+          background = "primary",
+          gradient = TRUE,
+          prettyRadioButtons(
+            inputId = "fishEnviro",
+            label = "",
+            choices = c("saltwater", "brackish",  "freshwater"),
+            status = "default"
+          )
+        ),
+        box(
+          title = "Filter by endemism",
+          status = "primary",
+          width = 4,
+          height = "360px",
+          collapsible = FALSE,
+          solidHeader = TRUE,
+          background = "primary",
+          gradient = TRUE,
+          awesomeCheckboxGroup(
+            inputId = "fishEndem",
+            label = "",
+            choices = c("endemic", "native", "introduced", "reintroduced"),
+            selected = c("endemic", "native", "introduced", "reintroduced"),
+            status = "default"
+          )
+        ),
+        box(
+          title = "Filter by family",
+          status = "primary",
+          width = 4,
+          height = "360px",
+          collapsible = FALSE,
+          solidHeader = TRUE,
+          background = "primary",
+          gradient = TRUE,
+          withSpinner(uiOutput("familyOut"))
+        )
+      ),
       br(),
-      withSpinner(DTOutput("species_table")),
+      fluidRow(
+        box(
+          title = "Click on any row to view images of the selected species.",
+          width = 12,
+          collapsible = FALSE,
+          solidHeader = TRUE,
+          background = "primary",
+          gradient = TRUE,
+          withSpinner(DTOutput("species_table"))
+        )
+        
+      ),
+
+      #-------------------------------------------------
       # Absolute panel will house the user input widgets
-      # Div tag is used to add styling to absolute panel
-      absolutePanel(top = 130, right = 20, fixed = FALSE,
-                    tags$div(style = "opacity: 0.70; background: #FFFFFF; padding: 8px; ",
-                             helpText("Welcome to the World map!"),
+      #-------------------------------------------------
+      absolutePanel(top = 100, right = 50, fixed = FALSE,
+                    tags$div(style = "opacity: 0.80; background-color: #000000; padding: 8px; color: #FFFFFF; ",
+                             helpText("Select a country to create a fish species list."),
                              textOutput("map_text") # display the country name in absolute panel when shape is clicked
                     )
       )
@@ -207,11 +164,11 @@ body<-dashboardBody(
   )
 )
 
-
-shinydashboardPlus::dashboardPage(
-  skin = "black",
+dashboardPage(
+  dark =TRUE,
   header = header,
   sidebar = sidebar,
   body = body,
+  controlbar = controlbar,
   footer = footer
 )

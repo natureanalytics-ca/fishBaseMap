@@ -4,142 +4,289 @@
 #Server
 #-----------------------------
 
-#------------------------------------
-# Loading map data and fishbase data
-#-----------------------------------
-
-##Shape Click Event Leaflet Map in Shiny
-## Zoom in to the country and display corresponding click data when clicked
-
-## Source of shape file
-# http://thematicmapping.org/downloads/world_borders.php
-## Set working directory and Download the shape files 
-
-#download.file("http://thematicmapping.org/downloads/TM_WORLD_BORDERS_SIMPL-0.3.zip" , destfile="TM_WORLD_BORDERS_SIMPL-0.3.zip")
-## Unzip doownloaded file
-#unzip("TM_WORLD_BORDERS_SIMPL-0.3.zip")
-
-
-## Load the shape file to a Spatial Polygon Data Frame (SPDF) using the readOGR() function
-myspdf = readOGR(dsn=getwd(), layer="TM_WORLD_BORDERS_SIMPL-0.3")
-
-#Load fishbase country info
-# fish_master<-country()
-# fish_master<-fish_master %>%
-#   select("country", "Status", "Species")
-# saveRDS(fish_master, file = "fishbase_countries.rds")
-#fish_master<-readRDS( file = paste0(getwd(), "/fishbase_countries.rds"))
-Sys.setenv(FISHBASE_HOME=paste0(getwd(), "/www"))
-fish_master<-country()
-
 server <- function(input, output, session) {
   
+  #-------------------------------
   #Mapping
+  #-------------------------------
+  
   output$mymap <- renderLeaflet({
-    # Create the map data and add polygons 
-    leaflet(data=myspdf) %>% 
-      addTiles() %>% 
+    leaflet(data=world) %>%
+      addTiles() %>%
       setView(lat=10, lng=0, zoom=2.4) %>%
-      addPolygons(fillColor = "green",
-                  highlight = highlightOptions(weight = 5,
-                                               color = "blue",
-                                               fillOpacity = 0.7,
+      addPolygons(
+        
+        stroke = TRUE,
+        color = "#78959E",
+        weight = 2,
+        opacity = 0.5,
+        fill = TRUE,
+        fillColor = "#DED892",
+        fillOpacity = 0.1,
+       
+                  highlight = highlightOptions(color = "#343a40",
+                                               weight = 2,
+                                               opacity = 0.8,
+                                               fillColor = "#608691",
+                                               fillOpacity = 0.5,
                                                bringToFront = TRUE),
-                  label = ~NAME,
-                  layerId = ~NAME) # add a layer ID to each shape. This will be used to identify the shape clicked
+                  label = ~name_long,
+                  layerId = ~name_long) %>%
+      setMapWidgetStyle(list(background= "white"))
+
+  
     
   })
   
-  # Zoom and set the view after click on state shape
-  # input$mymap_shape_click will be NULL when not clicked initially to any shape
-  # input$mymap_shape_click will have the ID, lat and lng corresponding to the shape clicked
-  # Observe to update the view and zoom level when a shape is clicked
-  observe(
-    {  click = input$mymap_shape_click
-    #  subset the spdf object to get the lat, lng and country name of the selected shape (Country in this case)
-    sub = myspdf[myspdf$NAME==input$mymap_shape_click$id, c("LAT", "LON", "NAME")]
-    lat = sub$LAT
-    lng = sub$LON
-    country = sub$NAME
-    if(is.null(click)) ## if nothing is clicked
-      return()
-    else
-      leafletProxy("mymap") %>%
+  
+  #-------------------------------------
+  #Update species list on  map click
+  #-------------------------------------
+  
+  map_species_list<-reactiveVal(NULL)
+  
+  observeEvent(input$mymap_shape_click, {  
+  
+    waitScreen$show()
+    
+    #------------------------------------------
+    #Update map by zooming to country selected
+    #-----------------------------------------
+    
+    lat = input$mymap_shape_click$lat
+    lng = input$mymap_shape_click$lng
+    country = input$mymap_shape_click$id
+    leafletProxy("mymap") %>%
       setView(lng = lng , lat = lat, zoom = 4) %>%
       clearMarkers() %>%
       addMarkers(lng =lng , lat = lat, popup = country)
-    # using lat long from spdf will not change the view on multiple clicks on the same shape
     
-    }
-  )
-  
-  ## absolute Panel displaying country Name
-  output$map_text <- renderText({
-    sub = myspdf[myspdf$NAME==input$mymap_shape_click$id, c("LAT", "LON", "NAME")]
-    country <- sub$NAME
-    paste("Country:", country)
-  })
-  
-  map_species_list<-reactive({
-    sub = myspdf[myspdf$NAME==input$mymap_shape_click$id, c("LAT", "LON", "NAME")]
-    countryIn = sub$NAME
+    #------------------------------------
+    #Get species list
+    #----------------------------------
+      
+    countryIn = input$mymap_shape_click$id
     #Manual changes so that country names from map conform to fishbase country names
     if(length(countryIn) > 0){
       if(countryIn == "United States") countryIn<-"USA"
       if(countryIn == "United Kingdom") countryIn <-"UK"
       if(countryIn == "Marshall islands") countryIn <- "Marshall Is."
       if(countryIn == "Northern Mariana islands") countryIn <- "North Marianas"
+      if(countryIn == "Russian Federation") countryIn <- "Russia"
+      
     }
     Y<-fish_master %>%
       filter(
         country %in% countryIn,
         Status %in% c("endemic", "native", "introduced", "reintroduced")
       )
-    Species<-sort(Y$Species)
-    FBname<-species(Species, fields=c("Species", "FBname", "Fresh", "Brack", "Saltwater"))
-    return(FBname)
+    Y<-Y[!duplicated(Y$Species),]
+    Y<-Y[order(Y$Species),]
+   
+    
+    X<-species(Y$Species, fields=c("Species", "FBname", "Fresh", "Brack", "Saltwater"))
+    X<-X[!duplicated(X$Species),]
+    X<-X[order(X$Species),]
+    
+    Z<-rfishbase::load_taxa() %>% 
+      filter(Species %in% local(X$Species)) %>%
+      collect()
+    Z<-Z[!duplicated(Z$Species),]
+    
+    map_species_list(X %>%
+      left_join(y = Y, by = "Species") %>%
+      left_join(y = Z, by = "Species") %>%
+      mutate(Family = replace(Family, is.na(Family), "Unknown"))
+    )
+    
+    waitScreen$hide()
   })
   
+  #------------------------------------------
+  #Absolute Panel displaying country Name
+  #-----------------------------------------
+  
+  output$map_text <- renderText({
+    if(!is.null(input$mymap_shape_click)) paste("Country:", input$mymap_shape_click$id)
+  })
+  
+  #------------------------
+  # Value boxes
+  #------------------------
+  
+  output$saltBox <- renderValueBox({
+    
+    if(is.null(map_species_list())){
+      saltwater<-0
+    } else {
+      total<- NROW(map_species_list()%>%
+                         filter(Saltwater == -1))
+      if("saltwater" %in% input$fishEnviro) {
+        saltwater<-NROW(
+          map_species_list()%>%
+            filter(Saltwater == -1) %>%
+            filter(Status %in% input$fishEndem) %>%
+            filter(Family %in% input$family)
+        )
+        saltwater<-paste(saltwater, "of", total)
+      } else {
+        saltwater<-paste(0, "of", total)
+      }
+    }   
+    valueBox(
+      value = saltwater,
+      subtitle = "Saltwater species",
+      color = "secondary",
+      icon = icon("fish")
+    )
+  })
+  
+  output$brackishBox <- renderValueBox({
+    
+    if(is.null(map_species_list())){
+      brackish<-0
+    } else {
+      total<- NROW(map_species_list()%>%
+                     filter(Brack == -1))
+      if("brackish" %in% input$fishEnviro) {
+        brackish<-NROW(
+          map_species_list()%>%
+            filter(Brack == -1) %>%
+            filter(Status %in% input$fishEndem) %>%
+            filter(Family %in% input$family)
+        )
+        brackish<-paste(brackish, "of", total)
+      } else {
+        brackish<-paste(0, "of", total)
+      }
+    } 
+    
+    valueBox(
+      value = brackish,
+      subtitle = "Brackish species",
+      color = "success",
+      icon = icon("fish")
+    )
+  })
+  
+  output$freshBox <- renderValueBox({
+    
+    if(is.null(map_species_list())){
+      freshwater<-0
+    } else {
+      total<- NROW(map_species_list()%>%
+                     filter(Fresh == -1))
+      if("freshwater" %in% input$fishEnviro) {
+        print("yes")
+        freshwater<-NROW(
+          map_species_list()%>%
+            filter(Fresh == -1) %>%
+            filter(Status %in% input$fishEndem) %>%
+            filter(Family %in% input$family)
+        )
+        freshwater<-paste(freshwater, "of", total)
+      } else {
+        freshwater<-paste(0, "of", total)
+      }
+    } 
+    
+    valueBox(
+      value = freshwater,
+      subtitle = "Freshwater species",
+      color = "info",
+      icon = icon("fish")
+    )
+  })
+  
+
+  #-----------------------------
+  #Family list
+  #----------------------------
+  
+  output[["familyOut"]]<-renderUI({
+    req(map_species_list())
+    tagList(
+    multiInput(
+      inputId = "family",
+      label = "", 
+      choices = unique(map_species_list()$Family),
+      selected = unique(map_species_list()$Family),
+      options = list(
+        enable_search = TRUE,
+        non_selected_header = "Families:",
+        selected_header = "Selected:"
+      )
+    ),
+    div(style = "display: inlilne;",
+        div(style = "float: left;", actionButton("groupSelectNone", "Select none", status = "danger")),
+        div(style = "float: right;", actionButton("groupSelectAll", "Select all", status = "danger"))
+    )
+    )
+  })
+  
+  #Group selection (select all)
+  observeEvent(input$groupSelectAll, {
+    updateMultiInput(session, "family", selected = unique(map_species_list()$Family))
+  })
+  
+  #Group selection (select none)
+  observeEvent(input$groupSelectNone, {
+    updateMultiInput(session, "family", selected = character(0))
+  })
+  
+  #--------------------------
+  #Filtering of species list
+  #--------------------------
+  
   plot_species_list<-reactive({
-    req(input$fishEnviro)
-    if(input$fishEnviro == "Saltwater") {
-      dtIn<-map_species_list()%>%
+    req(input$fishEnviro, map_species_list())
+    if(input$fishEnviro == "saltwater") {
+        dtIn<-map_species_list()%>%
         filter(Saltwater == -1)  %>%
         mutate(Enviro = rep("Saltwater", NROW(Saltwater))) %>%
-        select("Species", "FBname", "Enviro")
+        filter(Status %in% input$fishEndem) %>%
+        filter(Family %in% input$family) %>%
+        select("Species", "FBname", "Family", "Enviro")
     }
     
-    if(input$fishEnviro == "Freshwater") {
+    if(input$fishEnviro == "freshwater") {
       dtIn<-map_species_list()%>%
         filter(Fresh == -1) %>%
         mutate(Enviro = rep("Freshwater", NROW(Fresh))) %>%
-        select("Species", "FBname", "Enviro")
+        filter(Status %in% input$fishEndem) %>%
+        filter(Family %in% input$family) %>%
+        select("Species", "FBname", "Family", "Enviro")
     }
     
-    if(input$fishEnviro == "Any environment") {
+    if(input$fishEnviro == "brackish") {
       dtIn<-map_species_list() %>%
-        mutate(Enviro = rep("Any", NROW(Saltwater))) %>%
-        select("Species", "FBname", "Enviro")
+        mutate(Enviro = rep("Brackish", NROW(Saltwater))) %>%
+        filter(Status %in% input$fishEndem) %>%
+        filter(Family %in% input$family) %>%
+        select("Species", "FBname", "Family", "Enviro")
     }
     dtIn
   })
   
+  #--------------------------------
+  #Selectable table of species
+  #--------------------------------
+  
   output$species_table <- renderDT({
-    
     datatable(plot_species_list(),
-              colnames = c("Scientific name", "FishBase common name", "Environment"),
+              colnames = c("Scientific name", "Common name", "Family", "Environment"),
               rownames = FALSE,
               selection = "single",
               options = list(pageLength = 15,
                              scrollX = TRUE,
                              columnDefs = list(list(className = 'dt-left', targets = 0:1)))
     )
-    
   })
-  
   species_table_Proxy<-dataTableProxy(session$ns('species_table'))
   
   observeEvent(input$species_table_rows_selected,{
+    
+    waitScreen$show()
     
     show_condition <- function(code) {
       tryCatch(code,
@@ -149,34 +296,48 @@ server <- function(input, output, session) {
     }
     
     #inaturalist
-    INname<-show_condition(get_inat_obs(taxon_name = plot_species_list()$Species[input$species_table_rows_selected], maxresults = 10))
+    INname<-show_condition(get_inat_obs(taxon_name = plot_species_list()$Species[input$species_table_rows_selected], maxresults = 100))
     
     if(NROW(INname) > 0) {
       
+      #Remove any 'non-commerical only' images as a precaution
       INname<-INname %>%
         filter(license != "") %>%
         filter(image_url != "") %>%
-        mutate(uselic = str_detect(license, "CC"))
+        mutate(uselic = str_detect(license, "CC")) %>%
+        mutate(containsnc = str_detect(license, "NC")) %>%
+        filter(uselic) %>%
+        filter(!containsnc)
+      
       
       if (NROW(INname) > 0) {
         
-        mxImg<-ifelse(NROW(INname) > 5, 5, NROW(INname))
-        item<-carouselEdit(
+        mxImg<-ifelse(NROW(INname) > 10, 10, NROW(INname))
+        item<-bs4Carousel(
           id = "fishCarousel",
-          indicators = TRUE,
+          indicators = FALSE,
           width = 12,
           .list =
             lapply(1:mxImg, function(i) {
               src = INname$image_url[i]
-              carouselItem(
-                  div(
-                    align ="center",
-                    tags$image(src = src, style="height: 300px; align: center"),
-                    tags$a(href=INname$url[i],
-                           h5("Click for photo credit on iNaturalist.org"),
-                           target="_blank")
-                  )
-              )
+              bs4CarouselItem(
+                
+                div(
+                  align = "center",
+                  tags$image(src = src, style="max-height: 500px; border-radius: 10px;"),
+                ),
+                caption = div(
+                            HTML(
+                              ifelse(INname$license[i]=="CC0", paste0(INname$user_id[i], ", no rights reserved (CC0)."), 
+                                     paste0("&copy ", INname$user_id[i], ", some rights reserved (", INname$license[i], ")"))
+                              
+                            ),
+                            br(),
+                            tags$a(href=INname$url[i], "Find more details at iNaturalist.org", target="_blank"),
+                            h6(INname$place_guess[i])
+                )
+              ) 
+              
             })
         )
       } else {
@@ -186,94 +347,23 @@ server <- function(input, output, session) {
       item<-h5("No images found")
     }
     
-    shinyalert(
-      html = TRUE,
-      closeOnClickOutside = FALSE,
-      size = "s",
-      immediate = TRUE,
-      text = tagList(
-        h3(plot_species_list()$FBname[input$species_table_rows_selected]),
-        h3(plot_species_list()$Species[input$species_table_rows_selected]),
-        item
+    waitScreen$hide()
+  
+    showModal(
+      modalDialog(
+        easyClose = TRUE,
+        size = "l",
+        footer = "*Images may not correspond to country of interest",
+        tagList(
+          h3(plot_species_list()$FBname[input$species_table_rows_selected]),
+          h4(em(plot_species_list()$Species[input$species_table_rows_selected])),
+          br(),
+          item,
+          br()
         )
+      )
     )
   })
   
-  #----------------------------------------------------------------------------------------
-  #Modification of the shinydashboard carousel funtion that prevents auto-advance of slides
-  #----------------------------------------------------------------------------------------
-  
-  carouselEdit <- function (...,
-                            id,
-                            indicators = TRUE,
-                            width = 6,
-                            .list = NULL)
-  {
-    items <- c(list(...), .list)
-    generateCarouselNav <- function(items) {
-      found_active <- FALSE
-      navs <- lapply(seq_along(items), FUN = function(i) {
-        active <- if (found_active) {
-          FALSE
-        } else {
-          sum(grep(x = items[[i]]$attribs$class, pattern = "active")) == 1
-        }
-        if (active && !found_active) found_active <- TRUE
-        shiny::tags$li(
-          `data-target` = paste0("#",id),
-          `data-slide-to` = i - 1,
-          class = if (active) "active"
-        )
-      }
-      )
-      # actives <- dropNulls(lapply(navs, function(nav) {
-      #   nav$attribs$class
-      # }))
-      # if (length(actives) == 0) {
-      navs[[1]]$attribs$class <- "active"
-      items[[1]]$attribs$class <<-
-        paste0(items[[1]]$attribs$class,
-               " active")
-      # }
-      navs
-    }
-    indicatorsTag <-
-      shiny::tags$ol(class = "carousel-indicators",
-                     generateCarouselNav(items))
-    bodyTag <- shiny::tags$div(class = "carousel-inner",
-                               items)
-    controlButtons <- if (indicators) {
-      shiny::tagList(
-        shiny::tags$a(
-          class = "left carousel-control",
-          href = paste0("#", id),
-          `data-slide` = "prev",
-          shiny::tags$span(class = "fa fa-angle-left")
-        ),
-        shiny::tags$a(
-          class = "right carousel-control",
-          href = paste0("#", id),
-          `data-slide` = "next",
-          shiny::tags$span(class = "fa fa-angle-right")
-        )
-      )
-    }
-    else {
-      NULL
-    }
-    carouselTag <-
-      shiny::tags$div(
-        class = "carousel slide",
-        `data-interval` = 'false',
-        `data-ride` = "carousel",
-        `data-pause` = 'hover',
-        id = id
-      )
-    carouselTag <-
-      shiny::tagAppendChildren(carouselTag, indicatorsTag,
-                               bodyTag, controlButtons)
-    shiny::tags$div(class = if (!is.null(width))
-      paste0("col-sm-", width), carouselTag)
-  }
 }
 
