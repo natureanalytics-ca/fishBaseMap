@@ -217,8 +217,8 @@ server <- function(input, output, session) {
       )
     ),
     div(style = "display: inlilne;",
-        div(style = "float: left;", actionButton("groupSelectNone", "Select none", status = "danger")),
-        div(style = "float: right;", actionButton("groupSelectAll", "Select all", status = "danger"))
+        div(style = "float: left;", actionButton("groupSelectNone", "Select none", status = "info")),
+        div(style = "float: right;", actionButton("groupSelectAll", "Select all", status = "info"))
     )
     )
   })
@@ -238,9 +238,9 @@ server <- function(input, output, session) {
   #--------------------------
   
   plot_species_list<-reactive({
-    req(input$fishEnviro, map_species_list())
-    
-    
+
+    req(map_species_list())
+
     #-----------------
     #Saltwater
     #-----------------
@@ -253,7 +253,7 @@ server <- function(input, output, session) {
         filter(Family %in% input$family) %>%
         select("Species", "FBname", "Family")
     }
-    
+
     #-----------------
     #Freshwater
     #-----------------
@@ -266,46 +266,39 @@ server <- function(input, output, session) {
         filter(Family %in% input$family) %>%
         select("Species", "FBname", "Family")
     }
-    
+
     #-----------------
     #Brackish
     #-----------------
     brack<-NULL
     if("brackish" %in% input$fishEnviro) {
       brack<-map_species_list() %>%
+        filter(Brack == -1) %>%
         mutate(Enviro = rep("Brackish", NROW(Saltwater))) %>%
         filter(Status %in% input$fishEndem) %>%
         filter(Family %in% input$family) %>%
         select("Species", "FBname", "Family")
     }
-    
+
     dtIn<-rbind(salt, fresh, brack)
     dtIn<-dtIn[!duplicated(dtIn$Species),]
     dtIn
   })
-  
+
   #--------------------------------
   #Selectable table of species
   #--------------------------------
   
-  output$species_table <- renderUI({
+  output$species_table <- renderDT({
     req(plot_species_list())
-    tagList(
-      downloadButton("downloadData", "Download species list", class="dlButton"),
-      renderDT({
-        datatable(plot_species_list(),
-                  colnames = c("Scientific name", "Common name", "Family"),
-                  rownames = FALSE,
-                  selection = "single",
-                  options = list(pageLength = 15,
-                                 scrollX = TRUE,
-                                 columnDefs = list(list(className = 'dt-left', targets = 0:1)))
-        )
-      })
-      
+    datatable(plot_species_list(),
+              colnames = c("Scientific name", "Common name", "Family"),
+              rownames = FALSE,
+              selection = "single",
+              options = list(pageLength = 15,
+                             scrollX = TRUE,
+                             columnDefs = list(list(className = 'dt-left', targets = 0:1)))
     )
-  
-    
   })
   species_table_Proxy<-dataTableProxy(session$ns('species_table'))
   
@@ -383,7 +376,7 @@ server <- function(input, output, session) {
       modalDialog(
         easyClose = TRUE,
         size = "l",
-        footer = "*Images may not correspond to country of interest",
+        footer = "Images may not correspond to country of interest",
         tagList(
           h3(plot_species_list()$FBname[input$species_table_rows_selected]),
           h4(em(plot_species_list()$Species[input$species_table_rows_selected])),
@@ -398,6 +391,17 @@ server <- function(input, output, session) {
   #------------------------
   #Download
   #------------------------
+  
+  #Hide/Show download button
+  observe({
+    #cond<-NROW(plot_species_list()) > 0
+    toggle("downloadData", condition = NROW(plot_species_list()) > 0)
+    #  if(cond) {
+    #   show(id = "downloadData")
+    # } else {
+    #   hide(id = "downloadData")
+    # }
+  })
   
   output$downloadData <- downloadHandler(
  

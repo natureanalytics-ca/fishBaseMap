@@ -5,12 +5,12 @@ body, label, input, button, select {
 }
 
 table.dataTable tr.selected td, table.dataTable td.selected {
-  background-color: #FA5563!important;
+  background-color: #5098AE!important;
 }
 
 /*Hyperlink color*/
 a {
-  	color: #FA5563;
+  	color: #000000;
 }
    
 /*boxPad class*/
@@ -33,15 +33,14 @@ a {
 }
 
 /*Style download button*/
-.dlButton {
-  background-color: #FA5563!important;
+.modButton {
+  background-color: #5098AE!important;
   color: #FFFFFF!important;
-  float: right;
+  /*float: right!important;*/
   border-style: none;
   margin-bottom: 10px;
-  padding-left: 15px;
-  padding-right: 15px;
+  padding-left: 13px;
+  padding-right: 13px;
 }
-
 
 

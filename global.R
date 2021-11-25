@@ -44,7 +44,7 @@ inputTheme <- fresh::create_theme(
   #Layout options
   bs4dash_layout(
     font_size_root = NULL,
-    sidebar_width = NULL,
+    sidebar_width = "180px",
     sidebar_padding_x = NULL,
     sidebar_padding_y = NULL,
     sidebar_mini_width = NULL,
@@ -177,9 +177,7 @@ fish_master<-readRDS( file = "www/fishbase_countries.rds")
 #----------------------------------------
 footer = dashboardFooter(
   left =  HTML(
-    "<div style='padding-left: 10px;'>&copy Nature Analytics</div>",
-    "<a style='padding-left: 10px;' href='https://natureanalytics.ca/terms' target=
-    _blank'>&nbsp &nbsp Terms of use</a>",
+    "<div style='padding-left: 10px;'>&copy Nature Analytics</div>"
     ),
   
   right = 
