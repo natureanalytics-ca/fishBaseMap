@@ -107,7 +107,7 @@ server <- function(input, output, session) {
   #-----------------------------------------
   
   output$map_text <- renderText({
-    if(!is.null(input$mymap_shape_click)) paste("Country:", input$mymap_shape_click$id)
+    if(!is.null(input$mymap_shape_click)) paste("Selected country:", input$mymap_shape_click$id)
   })
   
   #------------------------
@@ -117,7 +117,8 @@ server <- function(input, output, session) {
   output$saltBox <- renderValueBox({
     
     if(is.null(map_species_list())){
-      saltwater<-0
+      saltwater<-NULL
+      total <- 0
     } else {
       total<- NROW(map_species_list()%>%
                          filter(Saltwater == -1))
@@ -128,23 +129,25 @@ server <- function(input, output, session) {
             filter(Status %in% input$fishEndem) %>%
             filter(Family %in% input$family)
         )
-        saltwater<-paste(saltwater, "of", total)
+        saltwater<-paste(saltwater, "species selected")
       } else {
-        saltwater<-paste(0, "of", total)
+        saltwater<-paste(0, "species selected")
       }
     }   
     valueBox(
-      value = saltwater,
+      value = total,
       subtitle = "Saltwater species",
       color = "secondary",
-      icon = icon("fish")
+      icon = icon("fish"),
+      footer = tags$small(tags$em(saltwater))
     )
   })
   
   output$brackishBox <- renderValueBox({
     
     if(is.null(map_species_list())){
-      brackish<-0
+      brackish<-NULL
+      total <- 0
     } else {
       total<- NROW(map_species_list()%>%
                      filter(Brack == -1))
@@ -155,24 +158,26 @@ server <- function(input, output, session) {
             filter(Status %in% input$fishEndem) %>%
             filter(Family %in% input$family)
         )
-        brackish<-paste(brackish, "of", total)
+        brackish<-paste(brackish, "species selected")
       } else {
-        brackish<-paste(0, "of", total)
+        brackish<-paste(0, "species selected")
       }
     } 
     
     valueBox(
-      value = brackish,
+      value = total,
       subtitle = "Brackish species",
       color = "success",
-      icon = icon("fish")
+      icon = icon("fish"),
+      footer = tags$small(tags$em(brackish))
     )
   })
   
   output$freshBox <- renderValueBox({
     
     if(is.null(map_species_list())){
-      freshwater<-0
+      freshwater<-NULL
+      total <- 0
     } else {
       total<- NROW(map_species_list()%>%
                      filter(Fresh == -1))
@@ -183,17 +188,18 @@ server <- function(input, output, session) {
             filter(Status %in% input$fishEndem) %>%
             filter(Family %in% input$family)
         )
-        freshwater<-paste(freshwater, "of", total)
+        freshwater<-paste(freshwater, "species selected")
       } else {
-        freshwater<-paste(0, "of", total)
+        freshwater<-paste(0, "species selected")
       }
     } 
     
     valueBox(
-      value = freshwater,
+      value = total,
       subtitle = "Freshwater species",
       color = "info",
-      icon = icon("fish")
+      icon = icon("fish"),
+      footer = tags$small(tags$em(freshwater))
     )
   })
   
@@ -202,24 +208,35 @@ server <- function(input, output, session) {
   #Family list
   #----------------------------
   
-  output[["familyOut"]]<-renderUI({
-    req(map_species_list())
-    tagList(
-    multiInput(
+  # output[["familyOut"]]<-renderUI({
+  #   req(map_species_list())
+  #   tagList(
+  #     multiInput(
+  #       inputId = "family",
+  #       label = "", 
+  #       choices = unique(map_species_list()$Family),
+  #       selected = unique(map_species_list()$Family),
+  #       options = list(
+  #         enable_search = TRUE,
+  #         non_selected_header = "Families:",
+  #         selected_header = "Selected:"
+  #       )
+  #     ),
+  #     div(style = "display: inlilne;",
+  #         div(style = "float: left;", actionButton("groupSelectNone", "Select none", status = "info")),
+  #         div(style = "float: right;", actionButton("groupSelectAll", "Select all", status = "info"))
+  #     )
+  #   )
+  # })
+  
+  #Update family multiInput
+  observeEvent(map_species_list(), {
+    updateMultiInput(
+      session = session,
       inputId = "family",
-      label = "", 
-      choices = unique(map_species_list()$Family),
+      label = "",
       selected = unique(map_species_list()$Family),
-      options = list(
-        enable_search = TRUE,
-        non_selected_header = "Families:",
-        selected_header = "Selected:"
-      )
-    ),
-    div(style = "display: inlilne;",
-        div(style = "float: left;", actionButton("groupSelectNone", "Select none", status = "info")),
-        div(style = "float: right;", actionButton("groupSelectAll", "Select all", status = "info"))
-    )
+      choices = unique(map_species_list()$Family)
     )
   })
   
@@ -300,7 +317,7 @@ server <- function(input, output, session) {
                              columnDefs = list(list(className = 'dt-left', targets = 0:1)))
     )
   })
-  species_table_Proxy<-dataTableProxy(session$ns('species_table'))
+  #species_table_Proxy<-dataTableProxy(session$ns('species_table'))
   
   
   #---------------------------
@@ -389,18 +406,29 @@ server <- function(input, output, session) {
   })
   
   #------------------------
-  #Download
+  #Hide/Show
   #------------------------
+  
+  observe({
+    
+    if(NROW(map_species_list()) > 0){
+      updateBox("filterTrait", action = "restore")
+      updateBox("filterFamily", action = "restore")
+      updateBox("speciesTable", action = "restore")
+    } else {
+      updateBox("filterTrait", action = "remove")
+      updateBox("filterFamily", action = "remove")
+      updateBox("speciesTable", action = "remove")
+    }
+  })
+  
+  #---------------
+  #Download
+  #---------------
   
   #Hide/Show download button
   observe({
-    #cond<-NROW(plot_species_list()) > 0
     toggle("downloadData", condition = NROW(plot_species_list()) > 0)
-    #  if(cond) {
-    #   show(id = "downloadData")
-    # } else {
-    #   hide(id = "downloadData")
-    # }
   })
   
   output$downloadData <- downloadHandler(

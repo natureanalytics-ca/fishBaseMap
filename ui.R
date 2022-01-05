@@ -93,6 +93,7 @@ body<-dashboardBody(
       br(),
       fluidRow(
         box(
+          id = "filterTrait",
           title = "Filter by trait",
           status = "primary",
           width = 4,
@@ -134,7 +135,8 @@ body<-dashboardBody(
           )
         ),
         box(
-          title = "Filter by family",
+          id = "filterFamily",
+          title = "Filter by fish family",
           status = "primary",
           width = 8,
           height = "360px",
@@ -150,15 +152,31 @@ body<-dashboardBody(
               p("Narrow results by selecting one or more fish families.")
             )
           ),
-          withSpinner(uiOutput("familyOut"))
+          #withSpinner(uiOutput("familyOut"))
+          #uiOutput("familyOut")
+          multiInput(
+            inputId = "family",
+            label = "", 
+            choices = "",
+            selected = "",
+            options = list(
+              enable_search = TRUE,
+              non_selected_header = "Families:",
+              selected_header = "Selected:"
+            )
+          ),
+          div(style = "display: inlilne;",
+              div(style = "float: left;", actionButton("groupSelectNone", "Select none", status = "info")),
+              div(style = "float: right;", actionButton("groupSelectAll", "Select all", status = "info"))
+          )
         )
       ),
       br(),
       
       fluidRow(
-        
         box(
-          title = "Click any row to view available images.",
+          id = "speciesTable",
+          title = div(style = "displayL inline;", icon("images"), "Click on any row in table to view fish images"),
           width = 12,
           collapsible = FALSE,
           solidHeader = TRUE,
@@ -167,11 +185,11 @@ body<-dashboardBody(
           gradient = TRUE,
           div(
             align = "right",
-            hidden(downloadButton("downloadData", "Download species list", icon = icon("cloud-download-alt"), class = "modButton"))
+            downloadButton("downloadData", "Download species list", icon = icon("cloud-download-alt"), class = "modButton")
           ),
-          withSpinner(DTOutput("species_table"))
+          #withSpinner(DTOutput("species_table"))
+          DTOutput("species_table")
         )
-        
       ),
 
       #-------------------------------------------------
